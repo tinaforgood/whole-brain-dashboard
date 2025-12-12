@@ -101,17 +101,26 @@
         }
 
         .info-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            flex-shrink: 0;
         }
 
-        .info-icon.target { background: #fef3c7; }
-        .info-icon.process { background: #dbeafe; }
+        .info-icon.target { 
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+        .info-icon.process { 
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        }
+        
+        .info-icon svg {
+            width: 18px;
+            height: 18px;
+        }
 
         .info-title {
             font-size: 14px;
@@ -473,7 +482,6 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <div class="stage-badge">Stage 2</div>
             <h1>Whole-Brain Metabolic-Dynamic Mismatch Detection</h1>
             <p>Data-driven voxel-wise identification of neurovascular decoupling without predefined ROIs</p>
         </header>
@@ -481,7 +489,13 @@
         <!-- Analysis Objective -->
         <section class="info-section">
             <div class="info-header">
-                <div class="info-icon target">🎯</div>
+                <div class="info-icon target">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <circle cx="12" cy="12" r="6"/>
+                        <circle cx="12" cy="12" r="2"/>
+                    </svg>
+                </div>
                 <div class="info-title">Analysis Objective</div>
             </div>
             <div class="info-content">
@@ -494,7 +508,12 @@
         <!-- Processing Pipeline -->
         <section class="info-section">
             <div class="info-header">
-                <div class="info-icon process">⚙️</div>
+                <div class="info-icon process">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 6h16M4 12h16M4 18h10"/>
+                        <path d="M18 15l3 3-3 3"/>
+                    </svg>
+                </div>
                 <div class="info-title">Processing Pipeline</div>
             </div>
             <div class="pipeline">
@@ -809,27 +828,6 @@
             return amp * Math.exp(-0.5 * (dx * dx + dy * dy));
         }
 
-        // 生成平滑的脑部mask（椭圆形）
-        function generateBrainMask(width, height) {
-            const mask = new Float32Array(width * height);
-            const cx = width / 2;
-            const cy = height / 2;
-            const rx = width * 0.42;
-            const ry = height * 0.48;
-            
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const dx = (x - cx) / rx;
-                    const dy = (y - cy) / ry;
-                    const d = Math.sqrt(dx * dx + dy * dy);
-                    // 使用smoothstep实现平滑边缘
-                    const edge = 1 - smoothstep(0.85, 1.0, d);
-                    mask[y * width + x] = edge;
-                }
-            }
-            return mask;
-        }
-
         // Smoothstep函数
         function smoothstep(edge0, edge1, x) {
             const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
@@ -968,7 +966,37 @@
             return kernel;
         }
 
-        // 渲染脑部图像
+        // 生成超平滑的脑部边缘mask - 使用更宽的渐变带
+        function generateSmoothBrainMask(width, height) {
+            const mask = new Float32Array(width * height);
+            const cx = width / 2;
+            const cy = height / 2;
+            const rx = width * 0.42;
+            const ry = height * 0.48;
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const dx = (x - cx) / rx;
+                    const dy = (y - cy) / ry;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // 使用更宽的渐变带 (0.75 到 1.0) 实现超平滑边缘
+                    if (d < 0.75) {
+                        mask[y * width + x] = 1.0;
+                    } else if (d < 1.0) {
+                        // 使用 smootherstep 实现更平滑的过渡
+                        const t = (d - 0.75) / 0.25;
+                        const smooth = t * t * t * (t * (t * 6 - 15) + 10); // smootherstep
+                        mask[y * width + x] = 1.0 - smooth;
+                    } else {
+                        mask[y * width + x] = 0;
+                    }
+                }
+            }
+            return mask;
+        }
+
+        // 渲染脑部图像 - 优化版，无锯齿
         function renderBrain(canvasId, dataType, colormap, showBorder = true) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
@@ -977,9 +1005,10 @@
             const displayWidth = wrapper.clientWidth || BASE_SIZE;
             const displayHeight = wrapper.clientHeight || BASE_SIZE;
             
-            // 设置高分辨率canvas
-            const renderWidth = displayWidth * RENDER_SCALE;
-            const renderHeight = displayHeight * RENDER_SCALE;
+            // 设置高分辨率canvas - 使用更高的超采样
+            const scale = 6; // 6x超采样
+            const renderWidth = displayWidth * scale;
+            const renderHeight = displayHeight * scale;
             
             canvas.width = renderWidth;
             canvas.height = renderHeight;
@@ -990,9 +1019,12 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
             
-            // 生成数据
+            // 生成数据和平滑mask
             const data = generateHeatmapData(renderWidth, renderHeight, dataType);
-            const mask = generateBrainMask(renderWidth, renderHeight);
+            const mask = generateSmoothBrainMask(renderWidth, renderHeight);
+            
+            // 对mask进行额外的高斯模糊
+            const smoothMask = gaussianBlur(mask, renderWidth, renderHeight, 8);
             
             // 创建图像数据
             const imageData = ctx.createImageData(renderWidth, renderHeight);
@@ -1005,12 +1037,12 @@
                     const idx = y * renderWidth + x;
                     const pixelIdx = idx * 4;
                     
-                    const maskValue = mask[idx];
+                    const maskValue = smoothMask[idx];
                     const dataValue = data[idx];
                     
-                    if (maskValue > 0.01) {
+                    if (maskValue > 0.001) {
                         const color = colormap(dataValue);
-                        // 与背景混合实现抗锯齿
+                        // 与背景混合实现完美抗锯齿
                         pixels[pixelIdx] = Math.round(color[0] * maskValue + bgColor[0] * (1 - maskValue));
                         pixels[pixelIdx + 1] = Math.round(color[1] * maskValue + bgColor[1] * (1 - maskValue));
                         pixels[pixelIdx + 2] = Math.round(color[2] * maskValue + bgColor[2] * (1 - maskValue));
@@ -1026,19 +1058,34 @@
             
             ctx.putImageData(imageData, 0, 0);
             
-            // 绘制平滑边框
+            // 使用SVG滤镜绘制超平滑边框
             if (showBorder) {
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-                ctx.lineWidth = 2 * RENDER_SCALE;
+                // 创建渐变边框效果
+                const gradient = ctx.createRadialGradient(
+                    renderWidth / 2, renderHeight / 2, renderWidth * 0.38,
+                    renderWidth / 2, renderHeight / 2, renderWidth * 0.46
+                );
+                gradient.addColorStop(0, 'rgba(180, 180, 190, 0)');
+                gradient.addColorStop(0.4, 'rgba(180, 180, 190, 0.15)');
+                gradient.addColorStop(0.6, 'rgba(180, 180, 190, 0.2)');
+                gradient.addColorStop(1, 'rgba(180, 180, 190, 0)');
+                
+                ctx.save();
+                ctx.globalCompositeOperation = 'source-over';
+                
+                // 绘制椭圆形渐变边框
                 ctx.beginPath();
                 ctx.ellipse(
                     renderWidth / 2, 
                     renderHeight / 2, 
-                    renderWidth * 0.42, 
-                    renderHeight * 0.48, 
+                    renderWidth * 0.44, 
+                    renderHeight * 0.50, 
                     0, 0, Math.PI * 2
                 );
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = renderWidth * 0.06; // 宽渐变边框
                 ctx.stroke();
+                ctx.restore();
             }
         }
 
