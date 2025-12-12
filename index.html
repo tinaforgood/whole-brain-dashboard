@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whole-Brain Metabolic-Dynamic Mismatch Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f8f9fc;
+            --bg-card: #ffffff;
+            --bg-accent: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --accent-orange: #f97316;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .stage-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-amber));
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Info Cards */
+        .info-section {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .info-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .info-icon.target { background: #fef3c7; }
+        .info-icon.process { background: #dbeafe; }
+
+        .info-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .info-content {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .info-content code {
+            font-family: 'JetBrains Mono', monospace;
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--accent-orange);
+        }
+
+        /* Pipeline */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .pipeline-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .pipeline-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: #fef3c7;
+            color: var(--accent-orange);
+        }
+
+        .pipeline-label {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .pipeline-arrow {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-value.highlight {
+            color: var(--accent-orange);
+        }
+
+        .stat-value.success {
+            color: var(--accent-green);
+        }
+
+        .stat-unit {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Brain Visualization Section */
+        .viz-section {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .viz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .viz-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .viz-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: #dbeafe;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .viz-subtitle {
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        /* Brain Grid */
+        .brain-matrix {
+            display: grid;
+            grid-template-columns: 80px repeat(4, 1fr) 60px;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .brain-row-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: right;
+            padding-right: 8px;
+        }
+
+        .brain-col-labels {
+            display: contents;
+        }
+
+        .brain-col-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .brain-canvas-wrapper {
+            position: relative;
+            aspect-ratio: 1;
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .brain-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: auto;
+        }
+
+        /* Colorbar */
+        .colorbar {
+            width: 20px;
+            height: 100%;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .colorbar-gradient {
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .colorbar-labels {
+            position: absolute;
+            right: -30px;
+            top: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 9px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Multi-slice row */
+        .slice-row {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .slice-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slice-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .slice-canvas-wrapper {
+            width: 100px;
+            height: 100px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        /* Orthogonal Views */
+        .ortho-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr) 60px;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .ortho-item {
+            text-align: center;
+        }
+
+        .ortho-label {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .ortho-label.sagittal { color: #ef4444; }
+        .ortho-label.coronal { color: #22c55e; }
+        .ortho-label.axial { color: #3b82f6; }
+
+        .ortho-canvas-wrapper {
+            aspect-ratio: 1;
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        /* Statistics Section */
+        .stats-section {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+        }
+
+        .chart-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        /* Mismatch Stats Box */
+        .mismatch-stats {
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .mismatch-stats-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .mismatch-stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            color: var(--text-secondary);
+        }
+
+        .mismatch-stats-row span:last-child {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="stage-badge">Stage 2</div>
+            <h1>Whole-Brain Metabolic-Dynamic Mismatch Detection</h1>
+            <p>Data-driven voxel-wise identification of neurovascular decoupling without predefined ROIs</p>
+        </header>
+
+        <!-- Analysis Objective -->
+        <section class="info-section">
+            <div class="info-header">
+                <div class="info-icon target">🎯</div>
+                <div class="info-title">Analysis Objective</div>
+            </div>
+            <div class="info-content">
+                Perform unbiased whole-brain search for <strong>metabolic-dynamic mismatch</strong> regions. 
+                The mismatch score <code>z(MEG) - z(CBF)</code> identifies voxels with elevated neural excitation 
+                but reduced blood supply — the hallmark of neurovascular decoupling in SCD.
+            </div>
+        </section>
+
+        <!-- Processing Pipeline -->
+        <section class="info-section">
+            <div class="info-header">
+                <div class="info-icon process">⚙️</div>
+                <div class="info-title">Processing Pipeline</div>
+            </div>
+            <div class="pipeline">
+                <div class="pipeline-step">
+                    <span class="pipeline-badge">MNE-Python</span>
+                    <span class="pipeline-label">Generate STC</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <span class="pipeline-badge">ANTsPy</span>
+                    <span class="pipeline-label">Nonlinear Warp</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <span class="pipeline-badge">NiLearn</span>
+                    <span class="pipeline-label">MNI152 Resample</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <span class="pipeline-badge">SciPy</span>
+                    <span class="pipeline-label">Z-score Transform</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <span class="pipeline-badge">Matplotlib</span>
+                    <span class="pipeline-label">Overlay Heatmap</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Brain Volume</div>
+                <div class="stat-value">290,137</div>
+                <div class="stat-unit">total voxels</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Normal Mismatch</div>
+                <div class="stat-value success">0</div>
+                <div class="stat-unit">voxels (z > 1.5)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">SCD Mismatch</div>
+                <div class="stat-value highlight">38,535</div>
+                <div class="stat-unit">voxels (z > 1.5)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Affected Volume</div>
+                <div class="stat-value highlight">13.3%</div>
+                <div class="stat-unit">of total brain</div>
+            </div>
+        </div>
+
+        <!-- MEG-CBF Comparison Matrix -->
+        <section class="viz-section">
+            <div class="viz-header">
+                <div class="viz-title">MEG-CBF Comparison Matrix</div>
+                <div class="viz-badge">Axial View</div>
+            </div>
+            <div class="viz-subtitle">Whole-Brain MEG-CBF Analysis: Axial View at Hippocampus Level</div>
+            
+            <!-- Column Labels -->
+            <div class="brain-matrix" style="margin-bottom: 8px;">
+                <div></div>
+                <div class="brain-col-label">MEG Power</div>
+                <div class="brain-col-label">CBF</div>
+                <div class="brain-col-label">Mismatch</div>
+                <div class="brain-col-label">Threshold z>1.5</div>
+                <div></div>
+            </div>
+
+            <!-- Normal Row -->
+            <div class="brain-matrix" style="margin-bottom: 16px;">
+                <div class="brain-row-label">Normal</div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="normal-meg" class="brain-canvas"></canvas>
+                </div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="normal-cbf" class="brain-canvas"></canvas>
+                </div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="normal-mismatch" class="brain-canvas"></canvas>
+                </div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="normal-threshold" class="brain-canvas"></canvas>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center;">
+                    <div class="colorbar" style="height: 80px;">
+                        <div class="colorbar-gradient" id="colorbar-meg"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCD Row -->
+            <div class="brain-matrix" style="margin-bottom: 16px;">
+                <div class="brain-row-label">SCD</div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="scd-meg" class="brain-canvas"></canvas>
+                </div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="scd-cbf" class="brain-canvas"></canvas>
+                </div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="scd-mismatch" class="brain-canvas"></canvas>
+                </div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="scd-threshold" class="brain-canvas"></canvas>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center;">
+                    <div class="colorbar" style="height: 80px;">
+                        <div class="colorbar-gradient" id="colorbar-cbf"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delta Row -->
+            <div class="brain-matrix">
+                <div class="brain-row-label">Δ (SCD-Normal)</div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="delta-meg" class="brain-canvas"></canvas>
+                </div>
+                <div class="brain-canvas-wrapper">
+                    <canvas id="delta-cbf" class="brain-canvas"></canvas>
+                </div>
+                <div class="brain-canvas-wrapper" style="grid-column: span 2; display: flex; gap: 16px;">
+                    <div style="flex: 1;">
+                        <canvas id="delta-overlay" class="brain-canvas" style="width: 100%; height: 100%;"></canvas>
+                    </div>
+                    <div class="mismatch-stats" style="flex: 1; font-size: 11px;">
+                        <div class="mismatch-stats-title">Mismatch Statistics</div>
+                        <div class="mismatch-stats-row"><span>Threshold:</span><span>z > 1.5</span></div>
+                        <div style="margin-top: 8px; font-weight: 600; color: var(--accent-green);">Normal:</div>
+                        <div class="mismatch-stats-row"><span>Voxels:</span><span>0</span></div>
+                        <div class="mismatch-stats-row"><span>Volume:</span><span>0.0%</span></div>
+                        <div style="margin-top: 8px; font-weight: 600; color: var(--accent-orange);">SCD:</div>
+                        <div class="mismatch-stats-row"><span>Voxels:</span><span>38,535</span></div>
+                        <div class="mismatch-stats-row"><span>Volume:</span><span>13.3%</span></div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center;">
+                    <div class="colorbar" style="height: 80px;">
+                        <div class="colorbar-gradient" id="colorbar-mismatch"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Multi-Slice Visualization -->
+        <section class="viz-section">
+            <div class="viz-header">
+                <div class="viz-title">SCD Patient: Multi-Slice Mismatch Visualization</div>
+                <div class="viz-badge">Axial Stack</div>
+            </div>
+            <div class="viz-subtitle">SCD Patient: Mismatch Hotspots Across Axial Slices</div>
+            
+            <div class="slice-row">
+                <div class="slice-item">
+                    <span class="slice-label">z = -30</span>
+                    <div class="slice-canvas-wrapper">
+                        <canvas id="slice-1" class="brain-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="slice-item">
+                    <span class="slice-label">z = -14</span>
+                    <div class="slice-canvas-wrapper">
+                        <canvas id="slice-2" class="brain-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="slice-item">
+                    <span class="slice-label">z = 2</span>
+                    <div class="slice-canvas-wrapper">
+                        <canvas id="slice-3" class="brain-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="slice-item">
+                    <span class="slice-label">z = 18</span>
+                    <div class="slice-canvas-wrapper">
+                        <canvas id="slice-4" class="brain-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="slice-item">
+                    <span class="slice-label">z = 34</span>
+                    <div class="slice-canvas-wrapper">
+                        <canvas id="slice-5" class="brain-canvas"></canvas>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <div class="colorbar" style="height: 80px; margin-left: 20px;">
+                        <div class="colorbar-gradient" id="colorbar-slice"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Orthogonal Views -->
+        <section class="viz-section">
+            <div class="viz-header">
+                <div class="viz-title">Orthogonal Views: Mismatch Hotspots</div>
+                <div class="viz-badge">3-Plane</div>
+            </div>
+            <div class="viz-subtitle">SCD Patient: Orthogonal Views of Mismatch Hotspots</div>
+            
+            <div class="ortho-grid">
+                <div class="ortho-item">
+                    <div class="ortho-label sagittal">Sagittal (x=0)</div>
+                    <div class="ortho-canvas-wrapper">
+                        <canvas id="ortho-sagittal" class="brain-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="ortho-item">
+                    <div class="ortho-label coronal">Coronal (y=-16)</div>
+                    <div class="ortho-canvas-wrapper">
+                        <canvas id="ortho-coronal" class="brain-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="ortho-item">
+                    <div class="ortho-label axial">Axial (z=-14)</div>
+                    <div class="ortho-canvas-wrapper">
+                        <canvas id="ortho-axial" class="brain-canvas"></canvas>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center;">
+                    <div class="colorbar" style="height: 120px;">
+                        <div class="colorbar-gradient" id="colorbar-ortho"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Statistical Summary -->
+        <section class="viz-section">
+            <div class="viz-header">
+                <div class="viz-title">Statistical Summary</div>
+                <div class="viz-badge">Quantitative</div>
+            </div>
+            
+            <div class="stats-section">
+                <div class="chart-container">
+                    <div class="chart-title">Mismatch Volume Comparison</div>
+                    <canvas id="bar-chart" style="width: 100%; height: 200px;"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Mismatch Score Distribution</div>
+                    <canvas id="dist-chart" style="width: 100%; height: 200px;"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            Stage 2: Whole-Brain Mismatch Detection · Simulated Data for Demonstration
+        </footer>
+    </div>
+
+    <script>
+        // ============================================
+        // HIGH-RESOLUTION SMOOTH BRAIN RENDERING
+        // ============================================
+        
+        // 使用更高的渲染分辨率来消除锯齿
+        const RENDER_SCALE = 4; // 4x超采样
+        const BASE_SIZE = 200;
+        
+        // 颜色映射函数
+        const colormaps = {
+            // 热力图 (MEG Power) - 蓝到红
+            hot: (t) => {
+                if (t < 0.25) return [0, 0, Math.floor(128 + t * 4 * 127)];
+                if (t < 0.5) return [0, Math.floor((t - 0.25) * 4 * 255), 255];
+                if (t < 0.75) return [Math.floor((t - 0.5) * 4 * 255), 255, Math.floor(255 - (t - 0.5) * 4 * 255)];
+                return [255, Math.floor(255 - (t - 0.75) * 4 * 255), 0];
+            },
+            // 冷色调 (CBF) - 绿色系
+            cool: (t) => {
+                if (t < 0.5) return [0, Math.floor(t * 2 * 200), Math.floor(100 + t * 100)];
+                return [Math.floor((t - 0.5) * 2 * 100), Math.floor(200 - (t - 0.5) * 100), Math.floor(200 - (t - 0.5) * 2 * 150)];
+            },
+            // 差异图 - 蓝白红
+            diverging: (t) => {
+                if (t < 0.5) {
+                    const s = t * 2;
+                    return [Math.floor(59 + s * 196), Math.floor(76 + s * 179), Math.floor(192 + s * 63)];
+                } else {
+                    const s = (t - 0.5) * 2;
+                    return [255, Math.floor(255 - s * 176), Math.floor(255 - s * 176)];
+                }
+            },
+            // 阈值图 - 灰到红橙
+            threshold: (t) => {
+                if (t < 0.3) return [240, 240, 245];
+                const s = (t - 0.3) / 0.7;
+                return [
+                    Math.floor(240 + s * 15),
+                    Math.floor(240 - s * 170),
+                    Math.floor(245 - s * 200)
+                ];
+            },
+            // 红橙热力图
+            redHot: (t) => {
+                if (t < 0.2) return [255, 255, 220];
+                if (t < 0.4) return [255, Math.floor(255 - (t - 0.2) * 5 * 55), Math.floor(220 - (t - 0.2) * 5 * 120)];
+                if (t < 0.7) return [255, Math.floor(200 - (t - 0.4) * 3.33 * 100), Math.floor(100 - (t - 0.4) * 3.33 * 50)];
+                return [Math.floor(255 - (t - 0.7) * 3.33 * 55), Math.floor(100 - (t - 0.7) * 3.33 * 50), Math.floor(50 - (t - 0.7) * 3.33 * 30)];
+            }
+        };
+
+        // 高斯函数
+        function gaussian(x, y, cx, cy, sx, sy, amp = 1) {
+            const dx = (x - cx) / sx;
+            const dy = (y - cy) / sy;
+            return amp * Math.exp(-0.5 * (dx * dx + dy * dy));
+        }
+
+        // 生成平滑的脑部mask（椭圆形）
+        function generateBrainMask(width, height) {
+            const mask = new Float32Array(width * height);
+            const cx = width / 2;
+            const cy = height / 2;
+            const rx = width * 0.42;
+            const ry = height * 0.48;
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const dx = (x - cx) / rx;
+                    const dy = (y - cy) / ry;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    // 使用smoothstep实现平滑边缘
+                    const edge = 1 - smoothstep(0.85, 1.0, d);
+                    mask[y * width + x] = edge;
+                }
+            }
+            return mask;
+        }
+
+        // Smoothstep函数
+        function smoothstep(edge0, edge1, x) {
+            const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+            return t * t * (3 - 2 * t);
+        }
+
+        // 生成热力图数据
+        function generateHeatmapData(width, height, type, variation = 0) {
+            const data = new Float32Array(width * height);
+            const cx = width / 2;
+            const cy = height / 2;
+            
+            // 添加随机种子变化
+            const seed = variation * 12345;
+            const random = (i) => {
+                const x = Math.sin(seed + i * 127.1) * 43758.5453;
+                return x - Math.floor(x);
+            };
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let value = 0;
+                    
+                    switch (type) {
+                        case 'meg-normal':
+                            // 均匀的中等活动
+                            value = gaussian(x, y, cx, cy, width * 0.3, height * 0.35, 0.6);
+                            value += gaussian(x, y, cx * 0.7, cy, width * 0.15, height * 0.2, 0.3);
+                            value += gaussian(x, y, cx * 1.3, cy, width * 0.15, height * 0.2, 0.3);
+                            break;
+                            
+                        case 'meg-scd':
+                            // 中央高活动区域
+                            value = gaussian(x, y, cx, cy * 0.9, width * 0.25, height * 0.25, 0.9);
+                            value += gaussian(x, y, cx * 0.8, cy * 1.1, width * 0.18, height * 0.2, 0.7);
+                            value += gaussian(x, y, cx * 1.2, cy * 1.1, width * 0.18, height * 0.2, 0.7);
+                            break;
+                            
+                        case 'cbf-normal':
+                            // 正常血流 - 均匀分布
+                            value = gaussian(x, y, cx, cy, width * 0.32, height * 0.38, 0.7);
+                            value += gaussian(x, y, cx * 0.75, cy, width * 0.18, height * 0.22, 0.4);
+                            value += gaussian(x, y, cx * 1.25, cy, width * 0.18, height * 0.22, 0.4);
+                            break;
+                            
+                        case 'cbf-scd':
+                            // SCD血流 - 中央减少
+                            value = gaussian(x, y, cx, cy, width * 0.35, height * 0.4, 0.4);
+                            value += gaussian(x, y, cx * 0.6, cy * 0.8, width * 0.15, height * 0.18, 0.5);
+                            value += gaussian(x, y, cx * 1.4, cy * 0.8, width * 0.15, height * 0.18, 0.5);
+                            // 边缘保持
+                            value += gaussian(x, y, cx, cy * 1.3, width * 0.25, height * 0.15, 0.3);
+                            break;
+                            
+                        case 'mismatch-normal':
+                            // 正常 - 几乎无mismatch
+                            value = 0.05 + Math.random() * 0.05;
+                            break;
+                            
+                        case 'mismatch-scd':
+                            // SCD mismatch - 中央高
+                            value = gaussian(x, y, cx, cy * 0.85, width * 0.22, height * 0.22, 0.95);
+                            value += gaussian(x, y, cx * 0.75, cy * 1.05, width * 0.15, height * 0.18, 0.7);
+                            value += gaussian(x, y, cx * 1.25, cy * 1.05, width * 0.15, height * 0.18, 0.7);
+                            break;
+                            
+                        case 'hotspot':
+                            // 热点显示
+                            const hotspot = gaussian(x, y, cx, cy * 0.85, width * 0.2, height * 0.2, 1);
+                            const hotspot2 = gaussian(x, y, cx * 0.8, cy * 1.1, width * 0.12, height * 0.15, 0.8);
+                            const hotspot3 = gaussian(x, y, cx * 1.2, cy * 1.1, width * 0.12, height * 0.15, 0.8);
+                            value = Math.max(hotspot, hotspot2, hotspot3);
+                            break;
+                    }
+                    
+                    data[y * width + x] = Math.max(0, Math.min(1, value));
+                }
+            }
+            
+            // 应用高斯模糊以平滑
+            return gaussianBlur(data, width, height, 3);
+        }
+
+        // 高斯模糊
+        function gaussianBlur(data, width, height, radius) {
+            const result = new Float32Array(data.length);
+            const kernel = generateGaussianKernel(radius);
+            const kSize = kernel.length;
+            const kHalf = Math.floor(kSize / 2);
+            
+            // 水平模糊
+            const temp = new Float32Array(data.length);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let sum = 0, weightSum = 0;
+                    for (let k = 0; k < kSize; k++) {
+                        const sx = Math.max(0, Math.min(width - 1, x + k - kHalf));
+                        sum += data[y * width + sx] * kernel[k];
+                        weightSum += kernel[k];
+                    }
+                    temp[y * width + x] = sum / weightSum;
+                }
+            }
+            
+            // 垂直模糊
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let sum = 0, weightSum = 0;
+                    for (let k = 0; k < kSize; k++) {
+                        const sy = Math.max(0, Math.min(height - 1, y + k - kHalf));
+                        sum += temp[sy * width + x] * kernel[k];
+                        weightSum += kernel[k];
+                    }
+                    result[y * width + x] = sum / weightSum;
+                }
+            }
+            
+            return result;
+        }
+
+        // 生成高斯核
+        function generateGaussianKernel(radius) {
+            const size = radius * 2 + 1;
+            const kernel = new Float32Array(size);
+            const sigma = radius / 2;
+            let sum = 0;
+            
+            for (let i = 0; i < size; i++) {
+                const x = i - radius;
+                kernel[i] = Math.exp(-(x * x) / (2 * sigma * sigma));
+                sum += kernel[i];
+            }
+            
+            // 归一化
+            for (let i = 0; i < size; i++) kernel[i] /= sum;
+            return kernel;
+        }
+
+        // 渲染脑部图像
+        function renderBrain(canvasId, dataType, colormap, showBorder = true) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const wrapper = canvas.parentElement;
+            const displayWidth = wrapper.clientWidth || BASE_SIZE;
+            const displayHeight = wrapper.clientHeight || BASE_SIZE;
+            
+            // 设置高分辨率canvas
+            const renderWidth = displayWidth * RENDER_SCALE;
+            const renderHeight = displayHeight * RENDER_SCALE;
+            
+            canvas.width = renderWidth;
+            canvas.height = renderHeight;
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            // 生成数据
+            const data = generateHeatmapData(renderWidth, renderHeight, dataType);
+            const mask = generateBrainMask(renderWidth, renderHeight);
+            
+            // 创建图像数据
+            const imageData = ctx.createImageData(renderWidth, renderHeight);
+            const pixels = imageData.data;
+            
+            const bgColor = [248, 249, 252]; // 背景色
+            
+            for (let y = 0; y < renderHeight; y++) {
+                for (let x = 0; x < renderWidth; x++) {
+                    const idx = y * renderWidth + x;
+                    const pixelIdx = idx * 4;
+                    
+                    const maskValue = mask[idx];
+                    const dataValue = data[idx];
+                    
+                    if (maskValue > 0.01) {
+                        const color = colormap(dataValue);
+                        // 与背景混合实现抗锯齿
+                        pixels[pixelIdx] = Math.round(color[0] * maskValue + bgColor[0] * (1 - maskValue));
+                        pixels[pixelIdx + 1] = Math.round(color[1] * maskValue + bgColor[1] * (1 - maskValue));
+                        pixels[pixelIdx + 2] = Math.round(color[2] * maskValue + bgColor[2] * (1 - maskValue));
+                        pixels[pixelIdx + 3] = 255;
+                    } else {
+                        pixels[pixelIdx] = bgColor[0];
+                        pixels[pixelIdx + 1] = bgColor[1];
+                        pixels[pixelIdx + 2] = bgColor[2];
+                        pixels[pixelIdx + 3] = 255;
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            // 绘制平滑边框
+            if (showBorder) {
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.lineWidth = 2 * RENDER_SCALE;
+                ctx.beginPath();
+                ctx.ellipse(
+                    renderWidth / 2, 
+                    renderHeight / 2, 
+                    renderWidth * 0.42, 
+                    renderHeight * 0.48, 
+                    0, 0, Math.PI * 2
+                );
+                ctx.stroke();
+            }
+        }
+
+        // 渲染颜色条
+        function renderColorbar(elementId, colormap, labels = ['High', 'Low']) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const height = element.clientHeight || 80;
+            const canvas = document.createElement('canvas');
+            canvas.width = 20 * 2;
+            canvas.height = height * 2;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.borderRadius = '4px';
+            
+            const ctx = canvas.getContext('2d');
+            
+            for (let y = 0; y < canvas.height; y++) {
+                const t = 1 - y / canvas.height;
+                const color = colormap(t);
+                ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                ctx.fillRect(0, y, canvas.width, 1);
+            }
+            
+            element.innerHTML = '';
+            element.appendChild(canvas);
+        }
+
+        // 渲染柱状图
+        function renderBarChart() {
+            const canvas = document.getElementById('bar-chart');
+            if (!canvas) return;
+            
+            const wrapper = canvas.parentElement;
+            canvas.width = wrapper.clientWidth * 2;
+            canvas.height = 200 * 2;
+            canvas.style.width = '100%';
+            canvas.style.height = '200px';
+            
+            const ctx = canvas.getContext('2d');
+            ctx.scale(2, 2);
+            
+            const width = wrapper.clientWidth;
+            const height = 200;
+            const padding = { top: 20, right: 20, bottom: 40, left: 60 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            
+            // 数据
+            const data = [
+                { label: 'Normal\nControl', value: 0, color: '#94a3b8' },
+                { label: 'SCD\nPatient', value: 38535, color: '#f97316' }
+            ];
+            
+            const maxValue = 45000;
+            const barWidth = chartWidth / 4;
+            
+            // Y轴
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, padding.top);
+            ctx.lineTo(padding.left, height - padding.bottom);
+            ctx.stroke();
+            
+            // Y轴刻度
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px "DM Sans"';
+            ctx.textAlign = 'right';
+            for (let i = 0; i <= 4; i++) {
+                const y = padding.top + (chartHeight * (4 - i) / 4);
+                const value = (maxValue * i / 4);
+                ctx.fillText(value.toLocaleString(), padding.left - 8, y + 3);
+                
+                ctx.strokeStyle = '#f1f5f9';
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+            }
+            
+            // Y轴标签
+            ctx.save();
+            ctx.translate(15, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#64748b';
+            ctx.font = '11px "DM Sans"';
+            ctx.fillText('Mismatch Voxels (z > 1.5)', 0, 0);
+            ctx.restore();
+            
+            // 绘制柱状图
+            data.forEach((d, i) => {
+                const barX = padding.left + chartWidth * (i + 0.5) / 2 - barWidth / 2;
+                const barHeight = (d.value / maxValue) * chartHeight;
+                const barY = height - padding.bottom - barHeight;
+                
+                // 柱子
+                ctx.fillStyle = d.color;
+                roundRect(ctx, barX, barY, barWidth, barHeight, 4);
+                ctx.fill();
+                
+                // 数值标签
+                ctx.fillStyle = '#1e293b';
+                ctx.font = 'bold 14px "DM Sans"';
+                ctx.textAlign = 'center';
+                ctx.fillText(d.value.toLocaleString(), barX + barWidth / 2, barY - 8);
+                
+                // X轴标签
+                ctx.fillStyle = '#64748b';
+                ctx.font = '11px "DM Sans"';
+                const lines = d.label.split('\n');
+                lines.forEach((line, li) => {
+                    ctx.fillText(line, barX + barWidth / 2, height - padding.bottom + 15 + li * 14);
+                });
+            });
+        }
+
+        // 渲染分布图
+        function renderDistChart() {
+            const canvas = document.getElementById('dist-chart');
+            if (!canvas) return;
+            
+            const wrapper = canvas.parentElement;
+            canvas.width = wrapper.clientWidth * 2;
+            canvas.height = 200 * 2;
+            canvas.style.width = '100%';
+            canvas.style.height = '200px';
+            
+            const ctx = canvas.getContext('2d');
+            ctx.scale(2, 2);
+            
+            const width = wrapper.clientWidth;
+            const height = 200;
+            const padding = { top: 20, right: 80, bottom: 40, left: 50 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            
+            // 生成分布数据
+            const normalDist = [];
+            const scdDist = [];
+            const xRange = [-4, 6];
+            const steps = 100;
+            
+            for (let i = 0; i <= steps; i++) {
+                const x = xRange[0] + (xRange[1] - xRange[0]) * i / steps;
+                // 正常分布 - 标准正态
+                normalDist.push({ x, y: Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI) });
+                // SCD分布 - 右偏
+                const scdY = 0.6 * Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI) + 
+                             0.4 * Math.exp(-(x - 2) * (x - 2) / 3) / Math.sqrt(3 * Math.PI);
+                scdDist.push({ x, y: scdY });
+            }
+            
+            const maxY = 0.45;
+            
+            // 坐标转换
+            const toCanvasX = (x) => padding.left + (x - xRange[0]) / (xRange[1] - xRange[0]) * chartWidth;
+            const toCanvasY = (y) => height - padding.bottom - (y / maxY) * chartHeight;
+            
+            // 绘制网格
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding.top + chartHeight * i / 5;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+            }
+            
+            // 绘制阈值线
+            const thresholdX = toCanvasX(1.5);
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(thresholdX, padding.top);
+            ctx.lineTo(thresholdX, height - padding.bottom);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 绘制正常分布（填充）
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(normalDist[0].x), height - padding.bottom);
+            normalDist.forEach(p => ctx.lineTo(toCanvasX(p.x), toCanvasY(p.y)));
+            ctx.lineTo(toCanvasX(normalDist[normalDist.length - 1].x), height - padding.bottom);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 绘制正常分布线
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            normalDist.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(toCanvasX(p.x), toCanvasY(p.y));
+                else ctx.lineTo(toCanvasX(p.x), toCanvasY(p.y));
+            });
+            ctx.stroke();
+            
+            // 绘制SCD分布（填充）
+            ctx.fillStyle = 'rgba(249, 115, 22, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(scdDist[0].x), height - padding.bottom);
+            scdDist.forEach(p => ctx.lineTo(toCanvasX(p.x), toCanvasY(p.y)));
+            ctx.lineTo(toCanvasX(scdDist[scdDist.length - 1].x), height - padding.bottom);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 绘制SCD分布线
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            scdDist.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(toCanvasX(p.x), toCanvasY(p.y));
+                else ctx.lineTo(toCanvasX(p.x), toCanvasY(p.y));
+            });
+            ctx.stroke();
+            
+            // X轴
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, height - padding.bottom);
+            ctx.lineTo(width - padding.right, height - padding.bottom);
+            ctx.stroke();
+            
+            // X轴刻度
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px "DM Sans"';
+            ctx.textAlign = 'center';
+            for (let x = -4; x <= 6; x += 2) {
+                ctx.fillText(x, toCanvasX(x), height - padding.bottom + 15);
+            }
+            
+            // X轴标签
+            ctx.fillStyle = '#64748b';
+            ctx.font = '11px "DM Sans"';
+            ctx.fillText('Mismatch Score (z)', padding.left + chartWidth / 2, height - 8);
+            
+            // Y轴标签
+            ctx.save();
+            ctx.translate(12, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText('Density', 0, 0);
+            ctx.restore();
+            
+            // 图例
+            const legendX = width - padding.right + 10;
+            const legendY = padding.top + 20;
+            
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(legendX, legendY, 12, 12);
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px "DM Sans"';
+            ctx.textAlign = 'left';
+            ctx.fillText('Normal', legendX + 16, legendY + 10);
+            
+            ctx.fillStyle = '#f97316';
+            ctx.fillRect(legendX, legendY + 20, 12, 12);
+            ctx.fillText('SCD', legendX + 16, legendY + 30);
+            
+            // 阈值图例
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(legendX, legendY + 46);
+            ctx.lineTo(legendX + 12, legendY + 46);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('z=1.5', legendX + 16, legendY + 50);
+        }
+
+        // 辅助函数：圆角矩形
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // 初始化所有可视化
+        function initializeVisualizations() {
+            // MEG-CBF Matrix
+            renderBrain('normal-meg', 'meg-normal', colormaps.hot);
+            renderBrain('normal-cbf', 'cbf-normal', colormaps.cool);
+            renderBrain('normal-mismatch', 'mismatch-normal', colormaps.diverging);
+            renderBrain('normal-threshold', 'mismatch-normal', colormaps.threshold);
+            
+            renderBrain('scd-meg', 'meg-scd', colormaps.hot);
+            renderBrain('scd-cbf', 'cbf-scd', colormaps.cool);
+            renderBrain('scd-mismatch', 'mismatch-scd', colormaps.diverging);
+            renderBrain('scd-threshold', 'hotspot', colormaps.redHot);
+            
+            renderBrain('delta-meg', 'meg-scd', colormaps.hot);
+            renderBrain('delta-cbf', 'cbf-scd', colormaps.diverging);
+            renderBrain('delta-overlay', 'hotspot', colormaps.redHot);
+            
+            // Multi-slice
+            renderBrain('slice-1', 'hotspot', colormaps.redHot);
+            renderBrain('slice-2', 'hotspot', colormaps.redHot);
+            renderBrain('slice-3', 'hotspot', colormaps.redHot);
+            renderBrain('slice-4', 'hotspot', colormaps.redHot);
+            renderBrain('slice-5', 'hotspot', colormaps.redHot);
+            
+            // Orthogonal views
+            renderBrain('ortho-sagittal', 'hotspot', colormaps.redHot);
+            renderBrain('ortho-coronal', 'hotspot', colormaps.redHot);
+            renderBrain('ortho-axial', 'hotspot', colormaps.redHot);
+            
+            // Colorbars
+            renderColorbar('colorbar-meg', colormaps.hot);
+            renderColorbar('colorbar-cbf', colormaps.cool);
+            renderColorbar('colorbar-mismatch', colormaps.diverging);
+            renderColorbar('colorbar-slice', colormaps.redHot);
+            renderColorbar('colorbar-ortho', colormaps.redHot);
+            
+            // Charts
+            renderBarChart();
+            renderDistChart();
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initializeVisualizations);
+        
+        // 窗口大小改变时重新渲染
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(initializeVisualizations, 250);
+        });
+    </script>
+</body>
+</html>
